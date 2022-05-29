@@ -26,7 +26,7 @@ const symbols_to_bitboards = Dict(
 export symbols_to_bitboards
 
 
-const possible_promotion_pieces = ['q', 'n']
+const possible_promotion_pieces = ['q', 'n', 'r', 'b']
 export possible_promotion_pieces
 
 

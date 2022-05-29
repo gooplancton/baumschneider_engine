@@ -3,6 +3,8 @@ module MoveRepresentationUtils
 
 using ResumableFunctions
 using ..MoveRepresentation
+using ..BoardRepresentation
+using ..ChessConstants
 
 
 """
@@ -33,6 +35,9 @@ function alg_to_idx(letter::Char, number::Int)::Int
 
     return row * 8 + col
 end
+
+
+alg_to_idx(letter::Char, number::Char)::Int = alg_to_idx(letter, parse(Int, number))
 
 
 function move_to_alg(move::Move)::String
@@ -66,8 +71,106 @@ export move_to_alg
 
 
 function move_to_uci(move::Move)::String
-    return idx_to_alg(move.from_square)*idx_to_alg(move.to_square)
+    promotion_piece = move.promotion_piece !== nothing ? move.promotion_piece : ""
+    return idx_to_alg(move.from_square)*idx_to_alg(move.to_square)*promotion_piece
 end
+export move_to_uci
+
+
+function uci_to_move(gs::GameState, uci::AbstractString)::Move
+
+    from_sq_letter = uci[1]
+    from_sq_num = uci[2]
+    from_square_idx = alg_to_idx(from_sq_letter, from_sq_num)
+
+    to_sq_letter = uci[3]
+    to_sq_num = uci[4]
+    to_square_idx = alg_to_idx(to_sq_letter, to_sq_num)
+
+    if uci == "e1g1"
+        return Move(
+            "K",
+            true,
+            from_square_idx,
+            to_square_idx,
+            true,
+            false,
+            false,
+            nothing,
+            nothing
+        )
+    elseif uci == "e1c1"
+        return Move(
+            "K",
+            true,
+            from_square_idx,
+            to_square_idx,
+            false,
+            true,
+            false,
+            nothing,
+            nothing
+        )
+    elseif uci == "e8g8"
+        return Move(
+            "k",
+            true,
+            from_square_idx,
+            to_square_idx,
+            true,
+            false,
+            false,
+            nothing,
+            nothing
+        )
+    elseif uci == "e8c8"
+        return Move(
+            "k",
+            true,
+            from_square_idx,
+            to_square_idx,
+            false,
+            true,
+            false,
+            nothing,
+            nothing
+        )
+    else
+        moving_piece = gs.squares[from_square_idx]
+        captured_piece = gs.squares[to_square_idx]
+        captured_piece = captured_piece == ' ' ? nothing : captured_piece
+        if lowercase(moving_piece) == 'p' && to_square_idx == gs.enpassant
+            captured_piece = gs.white_to_move ? 'p' : 'P'
+        end
+
+        if length(uci) == 5
+            promotion_piece_lc = uci[5]
+            promotion_piece = gs.white_to_move ? uppercase(promotion_piece) : promotion_piece_lc
+
+            return Move(
+                moving_piece,
+                gs.white_to_move,
+                from_square_idx,
+                to_square_idx,
+                false,
+                false,
+                false,
+                false,
+                promotion_piece
+            )
+        else
+            return parse_simple_move(
+                moving_piece,
+                gs.white_to_move,
+                from_square_idx,
+                to_square_idx,
+                captured_piece
+            )
+        end
+    end
+
+end
+export uci_to_move
 
 
 function set_bit(bitboard::UInt64, idx::Int)::UInt64
@@ -108,6 +211,7 @@ function rank_to_bb(rank::Int)::UInt64
         init=UInt64(0)
     )
 end
+export rank_to_bb
 
 
 function file_to_bb(file::Int)::UInt64
@@ -117,15 +221,16 @@ function file_to_bb(file::Int)::UInt64
         init=UInt64(0)
     )
 end
+export file_to_bb
 
 
-function bitscan_forward(bitboard::UInt64)::Int
-    i = 1
-    while !((bitboard >> i) % 2)
-        i += 1
+function bitscan_forward(bb::UInt64)::Int
+
+    if bb == 0
+        return -1
     end
 
-    return i
+    return debruijn_seq_fw[(((bb & -bb) * debruijn64) >> 58) + 1]
 end
 export bitscan_forward
 

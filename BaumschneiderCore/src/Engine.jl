@@ -7,6 +7,7 @@ using ..BoardRepresentationUtils
 using ..MoveRepresentation
 using ..MoveRepresentationUtils
 using ..MoveSearch
+using ..OpeningBook
 
 
 mutable struct ChessEngine
@@ -17,22 +18,25 @@ mutable struct ChessEngine
     is_playing_from_book::Bool
     search_depth::Int
 end
+export ChessEngine
 
 
 start_game(as_white_player::Bool=true)::ChessEngine = ChessEngine(
     fen_to_gamestate(initial_fen),
     !as_white_player,
     [],
-    generate_opening_book_from_file("../openings/openings.txt"),
+    generate_opening_book_from_file("openings/openings.txt"),
     true,
-    5
+    4
 )
+export start_game
 
 
-function apply_move!(engine::ChessEngine, move::Move)
+function push_move!(engine::ChessEngine, move::Move)
     push!(engine.moves, move)
     apply_move!(engine.game_state, move)
 end
+export apply_move!
 
 
 function play_next_move!(engine::ChessEngine)!
@@ -43,18 +47,19 @@ function play_next_move!(engine::ChessEngine)!
         )
 
         if move_uci !== nothing
-            apply_move!(engine, opening_uci_to_move(move_uci))
+            push_move!(engine, uci_to_move(engine.game_state, move_uci))
             return nothing
         else
             engine.is_playing_from_book = false
         end
     end
 
-    minimax_search!(engine.game_state, engne.search_depth)
-    apply_move!(engine, engine.game_state.best_move_from_position)
+    minimax_search!(engine.game_state, engine.search_depth)
+    push_move!(engine, engine.game_state.best_move_from_position)
 
     return nothing
 end
+export play_next_move!
 
 
 end

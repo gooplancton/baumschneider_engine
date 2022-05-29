@@ -2,3 +2,7 @@ name = "BaumschneiderCore"
 uuid = "f1e417b6-722f-4356-931d-b6532acf4d8b"
 authors = ["gooplancton <gooplancton@outlook.com>"]
 version = "0.1.0"
+
+[deps]
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+ResumableFunctions = "c5292f4c-5179-55e1-98c5-05642aab7184"

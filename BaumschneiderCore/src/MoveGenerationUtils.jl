@@ -1,26 +1,7 @@
 using ..BoardRepresentation
 using ..MoveRepresentation
+using ..ChessConstants
 using ResumableFunctions
-
-
-function knight_attacks_empty_bb(from_square::Int)::UInt64
-    from_square_bb = idx_to_bb(from_square)
-    attack_bb = UInt64(0)
-
-    for i in knight_directions
-        attack_bb |= set_bit(attack_bb, from_square + i)
-    end
-
-    apply_gh_mask = (from_square_bb & (file_bbs['A'] | file_bbs['B'])) != 0
-    apply_ab_mask = (from_square_bb & (file_bbs['G'] | file_bbs['H'])) != 0
-    gh_mask = (file_bbs['G'] | file_bbs['H']) * apply_gh_mask
-    ab_mask = (file_bbs['A'] | file_bbs['B']) * apply_ab_mask
-
-    attack_bb &= ~(gh_mask)
-    attack_bb &= ~(ab_mask)
-
-    return attack_bb
-end
 
 
 function king_attacks_empty_bb(from_square::Int)::UInt64
@@ -99,118 +80,22 @@ function black_pawn_moves_empty_bb(from_square::Int)::UInt64
 end
 
 
-function north_ray_bb(from_square::Int)::UInt64
-    ray_bb = UInt64(0x0101010101010101) # A file
-    file_idx = from_square % 8
-    reverse_rank_idx = from_square ÷ 8
-
-    return ray_bb << (file_idx - 8 * (8 - reverse_rank_idx))
-end
-
-
-function south_ray_bb(from_square::Int)::UInt64
-    ray_bb = UInt64(0x0101010101010101) # A file
-    file_idx = from_square % 8
-    reverse_rank_idx = from_square ÷ 8
-
-    return ray_bb << (file_idx + 8 * (reverse_rank_idx + 1))
-end
-
-
-function east_ray_bb(from_square::Int)::UInt64
-    file_idx = from_square % 8
-    reverse_rank_idx = from_square ÷ 8
-    ray_bb = UInt64(2^(7 - file_idx) - 1)
-    
-    return ray_bb << (file_idx + 1 + 8 * reverse_rank_idx)
-end
-
-
-function west_ray_bb(from_square::Int)::UInt64
-    file_idx = from_square % 8
-    reverse_rank_idx = from_square ÷ 8
-    ray_bb = UInt64(2^file_idx - 1)
-    
-    return ray_bb << (8 * reverse_rank_idx)
-end
-
-
-function northwest_ray_bb(from_square::Int)::UInt64
-    file_idx = from_square % 8
-    reverse_rank_idx = from_square ÷ 8
-    idx = from_square
-    ray_bb = UInt64(0)
-
-    for _ in range(1, min(file_idx, reverse_rank_idx))
-        idx -= 9
-        ray_bb = set_bit(ray_bb, idx)
-    end
-
-    return ray_bb
-end
-
-
-function northeast_ray_bb(from_square::Int)::UInt64
-    file_idx = from_square % 8
-    reverse_rank_idx = from_square ÷ 8
-    idx = from_square
-    ray_bb = UInt64(0)
-
-    for _ in range(1, min(7-file_idx, reverse_rank_idx))
-        idx -= 7
-        ray_bb = set_bit(ray_bb, idx)
-    end
-
-    return ray_bb
-end
-
-
-function southwest_ray_bb(from_square::Int)::UInt64
-    file_idx = from_square % 8
-    reverse_rank_idx = from_square ÷ 8
-    idx = from_square
-    ray_bb = UInt64(0)
-
-    for _ in range(1, min(file_idx, 7-reverse_rank_idx))
-        idx += 7
-        ray_bb = set_bit(ray_bb, idx)
-    end
-
-    return ray_bb
-end
-
-
-function southeast_ray_bb(from_square::Int)::UInt64
-    file_idx = from_square % 8
-    reverse_rank_idx = from_square ÷ 8
-    idx = from_square
-    ray_bb = UInt64(0)
-
-    for _ in range(1, min(7-file_idx, 7-reverse_rank_idx))
-        idx += 9
-        ray_bb = set_bit(ray_bb, idx)
-    end
-
-    return ray_bb
-end
-
-
 function rook_attacks_empty_bb(from_square::Int)::UInt64
     return (
-        south_ray_bb(from_square)
-        | east_ray_bb(from_square)
-        | west_ray_bb(from_square)
-        | north_ray_bb(from_square)
+        south_rays_bb[from_square]
+        | east_rays_bb[from_square]
+        | west_rays_bb[from_square]
+        | north_rays_bb[from_square]
     )
 end
 
 
 function bishop_attacks_empty_bb(from_square::Int)::UInt64
     return (
-        southeast_ray_bb(from_square)
-        | southwest_ray_bb(from_square)
-        | northeast_ray_bb(from_square)
-        | northwest_ray_bb(from_square)
+        southeast_rays_bb[from_square]
+        | southwest_rays_bb[from_square]
+        | northeast_rays_bb[from_square]
+        | northwest_rays_bb[from_square]
     )
 end
 
@@ -226,7 +111,7 @@ function knight_pseudolegal_moves_bb(
     adv_occupancy::UInt64
 )::UInt64
 
-    empty_board_moves = knight_attacks_empty_bb(from_square)
+    empty_board_moves = knight_attacks_bb[from_square]
     return empty_board_moves & ~self_occupancy
 end
 
@@ -272,13 +157,13 @@ end
 
 function sliding_piece_pseudolegal_moves_bb(
     from_square::Int,
-    ray_bb_fun::Function,
+    ray_bb_dict::Dict{Int, UInt64},
     self_occupancy::UInt64,
     adv_occupancy::UInt64,
     ray_before_piece::Bool
 )::UInt64
 
-    piece_ray = ray_bb_fun(from_square)
+    piece_ray = ray_bb_dict[from_square]
     masked_blockers = (adv_occupancy | self_occupancy) & piece_ray
     blocker_idx = (
         ray_before_piece
@@ -286,7 +171,7 @@ function sliding_piece_pseudolegal_moves_bb(
         : bitscan_forward(masked_blockers)
     )
 
-    blocker_ray = blocker_idx >= 0 ? ray_bb_fun(blocker_idx) : UInt64(0)
+    blocker_ray = blocker_idx >= 0 ? ray_bb_dict[blocker_idx] : UInt64(0)
     attacks = piece_ray & ~blocker_ray
     
     return attacks & ~self_occupancy
@@ -301,28 +186,28 @@ function bishop_pseudolegal_moves_bb(
 
     moves_nw = sliding_piece_pseudolegal_moves_bb(
         from_square,
-        northwest_ray_bb,
+        northwest_rays_bb,
         self_occupancy,
         adv_occupancy,
         true
     )
     moves_ne = sliding_piece_pseudolegal_moves_bb(
         from_square,
-        northeast_ray_bb,
+        northeast_rays_bb,
         self_occupancy,
         adv_occupancy,
         true
     )
     moves_se = sliding_piece_pseudolegal_moves_bb(
         from_square,
-        southeast_ray_bb,
+        southeast_rays_bb,
         self_occupancy,
         adv_occupancy,
         false
     )
     moves_sw = sliding_piece_pseudolegal_moves_bb(
         from_square,
-        southwest_ray_bb,
+        southwest_rays_bb,
         self_occupancy,
         adv_occupancy,
         false
@@ -340,28 +225,28 @@ function rook_pseudolegal_moves_bb(
 
     moves_n = sliding_piece_pseudolegal_moves_bb(
         from_square,
-        north_ray_bb,
+        north_rays_bb,
         self_occupancy,
         adv_occupancy,
         true
     )
     moves_e = sliding_piece_pseudolegal_moves_bb(
         from_square,
-        east_ray_bb,
+        east_rays_bb,
         self_occupancy,
         adv_occupancy,
         false
     )
     moves_s = sliding_piece_pseudolegal_moves_bb(
         from_square,
-        south_ray_bb,
+        south_rays_bb,
         self_occupancy,
         adv_occupancy,
         false
     )
     moves_w = sliding_piece_pseudolegal_moves_bb(
         from_square,
-        west_ray_bb,
+        west_rays_bb,
         self_occupancy,
         adv_occupancy,
         true
@@ -390,6 +275,7 @@ function is_white_king_in_check(gs::GameState)::Bool
 
     return (attacked_bb & king_bb) != 0
 end
+export is_white_king_in_check
 
 
 function is_black_king_in_check(gs::GameState)::Bool
@@ -398,6 +284,7 @@ function is_black_king_in_check(gs::GameState)::Bool
 
     return (attacked_bb & king_bb) != 0
 end
+export is_black_king_in_check
 
 
 function moving_side_can_capture_king(gs::GameState)::Bool
@@ -406,3 +293,4 @@ function moving_side_can_capture_king(gs::GameState)::Bool
 
     return (attacked_bb & enemy_king_bb) != 0
 end
+export moving_side_can_capture_king

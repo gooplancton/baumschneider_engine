@@ -1,7 +1,9 @@
 module BoardRepresentationUtils
 
 using ..MoveRepresentation
+using ..MoveRepresentationUtils
 using ..BoardRepresentation
+using ..ChessConstants
 
 
 function white_occupancy_bb(gs::GameState)::UInt64

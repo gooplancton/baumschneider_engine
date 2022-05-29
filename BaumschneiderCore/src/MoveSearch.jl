@@ -3,6 +3,7 @@ module MoveSearch
 
 using ..MoveGeneration
 using ..BoardRepresentation
+using ..BoardRepresentationUtils
 using ..PositionEvaluation
 
 
@@ -72,11 +73,11 @@ function minimax_search_min(gs::GameState, depth::Int, alpha::Float32, beta::Flo
         score = minimax_search_min(gs, depth-1, alpha, beta)
         undo_move!(gs, move)
         if score <= alpha
-            gs.best_move_from_position = move
             return alpha
         end
         
         if score < beta
+            #gs.best_move_from_position = move
             beta = score
         end
     end

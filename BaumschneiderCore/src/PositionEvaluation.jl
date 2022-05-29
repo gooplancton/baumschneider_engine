@@ -2,6 +2,7 @@ module PositionEvaluation
 
 
 using ..BoardRepresentation
+using ..MoveRepresentationUtils
 
 
 function evaluate_position(gs::GameState)::Float32

@@ -10,7 +10,7 @@ struct CastlingRights
     black_can_castle_left::Bool
     black_can_castle_right::Bool
 end
-
+export CastlingRights
 
 
 mutable struct GameState

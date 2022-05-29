@@ -2,6 +2,9 @@ module MoveGeneration
 
 
 include("MoveGenerationUtils.jl")
+using ..MoveRepresentationUtils
+using ..BoardRepresentationUtils
+using ..PrecomputedBitboards
 
 
 function piece_moves_bb(piece::Char, from_square::Int, white_occupancy::UInt64, black_occupancy::UInt64)::UInt64
@@ -135,7 +138,7 @@ function generate_left_castle_move(gs::GameState)::Union{Move, Nothing}
     total_occupancy_bb = black_occupancy_bb(gs) | white_occupancy_bb(gs)
     king_square_idx = gs.white_to_move ? 60 : 4
     rook_square_bb = gs.white_to_move ? idx_to_bb(56) : idx_to_bb(0)
-    castling_line = west_ray_bb(king_square_idx) & ~rook_square_bb
+    castling_line = west_rays_bb[king_square_idx] & ~rook_square_bb
     other_pieces_in_line_bb = total_occupancy_bb & castling_line
 
     if other_pieces_in_line_bb != 0
@@ -181,7 +184,7 @@ function generate_right_castle_move(gs::GameState)::Union{Move, Nothing}
     total_occupancy_bb = black_occupancy_bb(gs) | white_occupancy_bb(gs)
     king_square_idx = gs.white_to_move ? 60 : 4
     rook_square_bb = gs.white_to_move ? idx_to_bb(63) : idx_to_bb(7)
-    castling_line = west_ray_bb(king_square_idx) & ~rook_square_bb
+    castling_line = east_rays_bb[king_square_idx] & ~rook_square_bb
     other_pieces_in_line_bb = total_occupancy_bb & castling_line
 
     if other_pieces_in_line_bb != 0
