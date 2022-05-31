@@ -5,6 +5,7 @@ include("MoveGenerationUtils.jl")
 using ..MoveRepresentationUtils
 using ..BoardRepresentationUtils
 using ..PrecomputedBitboards
+using ..OpeningBook
 
 
 function piece_moves_bb(piece::Char, from_square::Int, white_occupancy::UInt64, black_occupancy::UInt64)::UInt64
@@ -220,38 +221,6 @@ end
 
     white_occupancy = white_occupancy_bb(gs)
     black_occupancy = black_occupancy_bb(gs)
-    pawns_bb = gs.white_to_move ? gs.white_pawns : gs.black_pawns
-    
-    left_castle_move = generate_left_castle_move(gs)
-    if left_castle_move !== nothing
-    end
-
-    right_castle_move = generate_right_castle_move(gs)
-    if right_castle_move !== nothing
-    end
-
-    right_enp_offset = gs.white_to_move ? -7 : 9
-    right_enpassant_move = generate_enpassant_move(gs, right_enp_offset, pawns_bb)
-    if right_enpassant_move !== nothing
-        @yield right_enpassant_move
-    end
-
-    left_enp_offset = gs.white_to_move ? -9 : 7
-    left_enpassant_move = generate_enpassant_move(gs, left_enp_offset, pawns_bb)
-    if left_enpassant_move !== nothing
-        @yield left_enpassant_move
-    end
-
-    promovable_row_bb = gs.white_to_move ? rank_bbs[7] : rank_bbs[2]
-    promovable_pawns_bb = pawns_bb & promovable_row_bb
-    if promovable_pawns_bb != 0
-        promotion_moves = generate_promotion_moves(gs, promovable_pawns_bb)
-        for move in promotion_moves
-            @yield move
-        end
-    end
-
-
     for (index, piece) in enumerate(gs.squares)
 
         if piece == ' '
@@ -280,6 +249,171 @@ end
     end
 end
 export generate_pseudolegal_moves
+
+
+const rays_bbs = Dict(
+    (true, 8) => north_rays_bb,
+    (false, 8) => south_rays_bb,
+    (true, 7) => southwest_rays_bb,
+    (false, 7) => northeast_rays_bb,
+    (true, 9) => southeast_rays_bb,
+    (false, 9) => northwest_rays_bb,
+    (true, 1) => east_rays_bb,
+    (false, 1) => west_rays_bb
+)
+
+
+function check_ray_bb(from_square::Int, king_square::Int)::UInt64
+    diff = from_square - king_square
+    piece_before_king = diff < 0
+    for offset in 7:9
+        if diff % offset == 0
+            return (
+                rays_bbs[(piece_before_king, offset)][from_square]
+                & ~rays_bbs[(piece_before_king, offset)][king_square]
+            )
+        end
+    end
+
+    distance_to_edge = piece_before_king ? king_square % 8 : 8 - king_square % 8
+    if abs(diff) < distance_to_edge
+        return (
+            rays_bbs[(piece_before_king, 1)][from_square]
+            & ~rays_bbs[(piece_before_king, 1)][king_square]
+        )
+    end
+
+    return UInt64(0)
+end
+
+
+function is_legal_move(
+    gs::GameState,
+    move::Move,
+    self_occupancy_bb::UInt64,
+    adv_attacked_noking_bb::UInt64,
+    pieces_attacking_king_bb::UInt64,
+    pieces_pinning_bb::UInt64
+)::Bool
+
+    # https://peterellisjones.com/posts/generating-legal-chess-moves-efficiently/
+    # PART 1: KING MOVES
+    if lowercase(move.piece) == 'k'
+        return (adv_attacked_noking_bb & idx_to_bb(move.to_square)) == 0
+    end
+    # PART 2: CHECK EVASIONS
+    n_pieces_attacking_king = pop_count(pieces_attacking_king_bb)
+    king_square = gs.white_to_move ? bitscan_forward(gs.white_king) : bitscan_forward(bs.black_king)
+    if n_pieces_attacking_king > 1
+        return false
+    elseif n_pieces_attacking_king == 1
+        checking_piece_idx = bitscan_forward(pieces_attacking_king_bb)
+        attacking_ray_bb = check_ray_bb(checking_piece_idx, king_square)
+
+        return (attacking_ray_bb & idx_to_bb(move.to_square)) != 0
+    end
+    # PART 3: PINNED pieces
+    for pinning_piece_idx in bb_set_bits_idxs(pieces_pinning_bb)
+        pin_ray = check_ray_bb(pinning_piece_idx, king_square) | idx_to_bb(pinning_piece_idx)
+        pinned_piece_idx = bitscan_forward(pin_ray & self_occupancy_bb)
+        
+        if move.from_square == pinned_piece_idx
+            return (attacking_ray_bb & idx_to_bb(move.to_square)) != 0
+        end
+    end
+    # PART 4: ENPASSANT
+    ##### apply/undo the move
+    if move.is_enpassant
+        apply_move!(gs, move)
+        legal = !moving_side_can_capture_king(gs)
+        undo_move!(gs, move)
+        
+        return legal
+    end
+
+    return true
+end
+export is_legal_move
+
+
+function is_move_absolute_pin(move::Move, king_square::Int, self_occupancy_bb::UInt64)::Bool
+    pin_ray = check_ray_bb(move.from_square, king_square)   # includes the king_square!
+    return (
+        (move.to_square & pin_ray) != 0
+        && pop_count(pin_ray & self_occupancy_bb) >= 2
+    )
+end
+
+
+@resumable function generate_legal_moves(gs::GameState)::Move
+
+    ## GENERATE MOVES FOR OPPOSING PLAYER (ATTACKED SQUARES)
+    king_bb = gs.white_to_move ? gs.white_king : gs.black_king
+    self_occupancy_bb = gs.white_to_move ? white_occupancy_bb(gs) : black_occupancy_bb(gs)
+    king_square = bitscan_forward(king_bb)
+    gs.white_to_move = !gs.white_to_move
+    adv_attacked_squares_bb = UInt64(0)
+    pieces_attacking_king_bb = UInt64(0)
+    pieces_pinning_bb = UInt64(0)
+    for adv_move in generate_pseudolegal_moves(gs)
+        adv_attacked_squares_bb |= idx_to_bb(adv_move.to_square)
+        pieces_attacking_king_bb |= (adv_move.to_square == king_square)*idx_to_bb(adv_move.from_square)
+        pieces_pinning_bb |= is_move_absolute_pin(move, king_square, self_occupancy_bb)*idx_to_bb(adv_move.from_square)
+    end
+    gs.white_to_move = !gs.white_to_move
+    adv_attacked_noking_bb = adv_attacked_squares_bb & ~king_bb
+    pawns_bb = gs.white_to_move ? gs.white_pawns : gs.black_pawns
+    
+    left_castle_move = generate_left_castle_move(gs)
+    if left_castle_move !== nothing
+        @yield left_castle_move
+    end
+
+    right_castle_move = generate_right_castle_move(gs)
+    if right_castle_move !== nothing
+        @yield right_castle_move
+    end
+
+    right_enp_offset = gs.white_to_move ? -7 : 9
+    right_enpassant_move = generate_enpassant_move(gs, right_enp_offset, pawns_bb)
+    if right_enpassant_move !== nothing
+        @yield right_enpassant_move
+    end
+
+    left_enp_offset = gs.white_to_move ? -9 : 7
+    left_enpassant_move = generate_enpassant_move(gs, left_enp_offset, pawns_bb)
+    if left_enpassant_move !== nothing
+        @yield left_enpassant_move
+    end
+
+    promovable_row_bb = gs.white_to_move ? rank_bbs[7] : rank_bbs[2]
+    promovable_pawns_bb = pawns_bb & promovable_row_bb
+    if promovable_pawns_bb != 0
+        promotion_moves = generate_promotion_moves(gs, promovable_pawns_bb)
+        for move in promotion_moves
+            @yield move
+        end
+    end
+
+    for move in generate_pseudolegal_moves(gs)
+        if is_legal_move(gs, move, self_occupancy_bb, adv_attacked_noking_bb, pieces_attacking_king_bb, pieces_pinning_bb)
+            @yield move
+        end
+    end
+end
+
+
+function is_legal_usermove(gs::GameState, move::Move)::Bool
+    usermove_uci = move_to_uci(move)
+    for legal_move in generate_legal_moves(gs)
+        legal_move_uci = move_to_uci(legal_move)
+        if legal_move_uci == usermove_uci
+            return true
+        end
+    end
+
+    return false
+end
 
 
 end

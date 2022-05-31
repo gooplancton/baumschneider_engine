@@ -39,7 +39,7 @@ end
 export apply_move!
 
 
-function play_next_move!(engine::ChessEngine)!
+function play_next_move!(engine::ChessEngine)
     if engine.is_playing_from_book
         move_uci = sample_opening_book(
             engine.opening_book,

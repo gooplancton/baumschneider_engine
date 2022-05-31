@@ -11,26 +11,16 @@ function king_attacks_empty_bb(from_square::Int)::UInt64
     # SOUTH AND NORTH (NO NEED TO MASK)
     attack_bb |= from_square_bb << 8
     attack_bb |= from_square_bb << -8
-    # for i in [8, -8]
-    #     attack_bb |= from_square_bb << i
-    # end
 
     # EAST, SOUTHEAST AND NORTHEAST (MASK THE A FILE)
     attack_bb |= from_square_bb << 1 & ~file_bbs['A']
     attack_bb |= from_square_bb << 9 & ~file_bbs['A']
     attack_bb |= from_square_bb << -7 & ~file_bbs['A']
 
-    # for i in [1, 9, -7]
-    #     attack_bb |= from_square_bb << i & ~file_bbs['A']
-    # end
-
     # WEST, SOUTHWEST AND NORTHWEST (MASK THE H FILE)
     attack_bb |= from_square_bb << -1 & ~file_bbs['H']
     attack_bb |= from_square_bb << 7 & ~file_bbs['H']
     attack_bb |= from_square_bb << -9 & ~file_bbs['H']
-    # for i in [-1, 7, -9]
-    #     attack_bb |= from_square_bb << i & ~file_bbs['H']
-    # end
 
     return attack_bb
 end
