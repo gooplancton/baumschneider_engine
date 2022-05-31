@@ -340,7 +340,7 @@ function is_move_absolute_pin(move::Move, king_square::Int, self_occupancy_bb::U
     pin_ray = check_ray_bb(move.from_square, king_square)   # includes the king_square!
     return (
         (move.to_square & pin_ray) != 0
-        && pop_count(pin_ray & self_occupancy_bb) >= 2
+        && pop_count(pin_ray & self_occupancy_bb) == 2
     )
 end
 
