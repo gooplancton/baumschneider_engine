@@ -326,7 +326,7 @@ function apply_move!(gs::GameState, move::Move)
 
         # ENPASSANT
         if move.is_enpassant
-            capture_sq = move.white_to_move ? gs.prev_enpassant + 8 : gs.prev_enpassant - 8
+            capture_sq = move.player_white ? gs.prev_enpassant + 8 : gs.prev_enpassant - 8
             clear_bit_on_piece_bb!(gs, move.captured_piece, capture_sq)
             gs.squares[capture_sq + 1] = ' '
         end
@@ -395,7 +395,7 @@ function undo_move!(gs::GameState, move::Move)
 
         # ENPASSANT
         if move.is_enpassant
-            capture_sq = move.white_to_move ? gs.prev_enpassant + 8 : gs.prev_enpassant - 8
+            capture_sq = move.player_white ? gs.prev_enpassant + 8 : gs.prev_enpassant - 8
             set_bit_on_piece_bb!(gs, move.captured_piece, capture_sq)
             gs.squares[move.to_square + 1] = move.captured_piece
         end
