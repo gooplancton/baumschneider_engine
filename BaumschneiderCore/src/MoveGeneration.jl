@@ -248,7 +248,6 @@ end
         end
     end
 end
-export generate_pseudolegal_moves
 
 
 const rays_bbs = Dict(
@@ -401,6 +400,7 @@ end
         end
     end
 end
+export generate_legal_moves
 
 
 function is_legal_usermove(gs::GameState, move::Move)::Bool
@@ -414,6 +414,7 @@ function is_legal_usermove(gs::GameState, move::Move)::Bool
 
     return false
 end
+export is_legal_usermove
 
 
 end

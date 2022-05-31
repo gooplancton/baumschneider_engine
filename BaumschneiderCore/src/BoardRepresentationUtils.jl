@@ -4,6 +4,7 @@ using ..MoveRepresentation
 using ..MoveRepresentationUtils
 using ..BoardRepresentation
 using ..ChessConstants
+using ResumableFunctions
 
 
 function white_occupancy_bb(gs::GameState)::UInt64
@@ -441,5 +442,14 @@ end
 export undo_move!
 
 
+@resumable function pieces_on_squares(gs::GameState)::Tuple{Int, Char}
+    for (piece, bb) in symbols_to_bitboards
+        for piece_idx in bb_set_bits_idxs(getproperty(gs, bb))
+            @yield (piece_idx, piece)
+        end
+    end
+
 end
 
+
+end
