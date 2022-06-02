@@ -254,12 +254,12 @@ end
 const rays_bbs = Dict(
     (false, 8) => north_rays_bb,
     (true, 8) => south_rays_bb,
-    (false, 7) => southwest_rays_bb,
-    (true, 7) => northeast_rays_bb,
-    (false, 9) => southeast_rays_bb,
-    (true, 9) => northwest_rays_bb,
-    (false, 1) => east_rays_bb,
-    (true, 1) => west_rays_bb
+    (false, 7) => northeast_rays_bb,
+    (true, 7) => southwest_rays_bb,
+    (false, 9) => northwest_rays_bb,
+    (true, 9) => southeast_rays_bb,
+    (false, 1) => west_rays_bb,
+    (true, 1) => east_rays_bb
 )
 
 
