@@ -89,7 +89,7 @@ function uci_to_move(gs::GameState, uci::AbstractString)::Move
 
     if uci == "e1g1"
         return Move(
-            "K",
+            'K',
             true,
             from_square_idx,
             to_square_idx,
@@ -101,7 +101,7 @@ function uci_to_move(gs::GameState, uci::AbstractString)::Move
         )
     elseif uci == "e1c1"
         return Move(
-            "K",
+            'K',
             true,
             from_square_idx,
             to_square_idx,
@@ -113,7 +113,7 @@ function uci_to_move(gs::GameState, uci::AbstractString)::Move
         )
     elseif uci == "e8g8"
         return Move(
-            "k",
+            'k',
             true,
             from_square_idx,
             to_square_idx,
@@ -125,7 +125,7 @@ function uci_to_move(gs::GameState, uci::AbstractString)::Move
         )
     elseif uci == "e8c8"
         return Move(
-            "k",
+            'k',
             true,
             from_square_idx,
             to_square_idx,
