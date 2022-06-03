@@ -61,7 +61,7 @@ function minimax_search_min(gs::GameState, depth::Int, alpha::Float32, beta::Flo
         end
         
         if score < beta
-            #gs.best_move_from_position = move
+            gs.best_move_from_position = move
             beta = score
         end
     end
