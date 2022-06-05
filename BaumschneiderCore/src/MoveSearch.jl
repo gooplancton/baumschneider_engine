@@ -9,7 +9,7 @@ using ..PositionEvaluation
 
 function minimax_search_max(gs::GameState, depth::Int, alpha::Float32, beta::Float32)::Float32
     if depth == 0 
-        return evaluate_position(gs)
+        return count_material_diff(gs)
     end
 
     moves = generate_legal_moves(gs)
@@ -18,7 +18,9 @@ function minimax_search_max(gs::GameState, depth::Int, alpha::Float32, beta::Flo
     for move in moves
         n_moves += 1
         apply_move!(gs, move)
-        score = minimax_search_min(gs, depth-1, alpha, beta)
+        material_score = minimax_search_min(gs, depth-1, alpha, beta)
+        move_score = eval_piece_squares(move)
+        score = material_score + move_score
         undo_move!(gs, move)
         if score >= beta 
             return beta
@@ -45,7 +47,7 @@ end
 
 function minimax_search_min(gs::GameState, depth::Int, alpha::Float32, beta::Float32)::Float32
     if depth == 0 
-        return evaluate_position(gs)
+        return count_material_diff(gs)
     end
 
     moves = generate_legal_moves(gs)
@@ -54,7 +56,9 @@ function minimax_search_min(gs::GameState, depth::Int, alpha::Float32, beta::Flo
     for move in moves
         n_moves += 1
         apply_move!(gs, move)
-        score = minimax_search_min(gs, depth-1, alpha, beta)
+        material_score = minimax_search_min(gs, depth-1, alpha, beta)
+        move_score = eval_piece_squares(move)
+        score = material_score + move_score
         undo_move!(gs, move)
         if score <= alpha
             return alpha

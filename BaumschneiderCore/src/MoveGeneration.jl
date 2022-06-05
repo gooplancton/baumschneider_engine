@@ -82,8 +82,7 @@ function generate_promotion_moves(gs::GameState, promovable_pawns_bb::UInt64)::V
             for to_square in bb_set_bits_idxs(to_squares_bb)
                 for prom_piece in possible_promotion_pieces
                     prom_piece = gs.white_to_move ? uppercase(prom_piece) : prom_piece
-                    captured_piece = gs.squares[to_square + 1]
-                    captured_piece = (captured_piece == ' ') ? nothing : captured_piece
+                    captured_piece = piece_at_square(gs, to_square)
 
                     move = Move(
                         gs.white_to_move ? 'P' : 'p',
@@ -111,7 +110,7 @@ function side_attacked_bb(gs::GameState, side_white::Bool)::UInt64
     attacks_bb = UInt64(0)
     white_occupancy = white_occupancy_bb(gs)
     black_occupancy = black_occupancy_bb(gs)
-    for (index, piece) in enumerate(gs.squares)
+    for (index, piece) in pieces_on_squares(gs)
         if piece == ' ' || (isuppercase(piece) != side_white)
             continue
         end
@@ -220,7 +219,7 @@ end
 function generate_pseudolegal_moves(gs::GameState, white_occupancy::UInt64, black_occupancy::UInt64)::Vector{Move}
 
     moves = []
-    for (index, piece) in enumerate(gs.squares)
+    for (index, piece) in pieces_on_squares(gs)
 
         if piece == ' '
             continue
@@ -235,8 +234,7 @@ function generate_pseudolegal_moves(gs::GameState, white_occupancy::UInt64, blac
         moves_bb = piece_moves_bb(piece, from_square, white_occupancy, black_occupancy)
         to_squares = bb_set_bits_idxs(moves_bb)
         for to_square in to_squares
-            captured_piece = gs.squares[to_square + 1]
-            captured_piece = (captured_piece == ' ') ? nothing : captured_piece
+            captured_piece = piece_at_square(gs, to_square)
             push!(moves, parse_simple_move(
                 piece,
                 is_white_piece,

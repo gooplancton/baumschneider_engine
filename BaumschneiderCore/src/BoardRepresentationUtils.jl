@@ -33,9 +33,17 @@ end
 export black_occupancy_bb
 
 
-function show(gs::GameState)::Array{Char}
-    return permutedims(reshape(gs.squares, (8, 8)))
+function pprint_board(gs::GameState)::Array{Char}
+    squares = []
+    for idx in 0:63
+        piece = piece_at_square(gs, idx)
+        piece = piece === nothing ? piece : ' '
+        push!(squars, piece)
+    end
+    
+    return permutedims(reshape(squares, (8, 8)))
 end
+export pprint_board
 
 
 """
@@ -47,7 +55,6 @@ Args:
 function fen_to_gamestate(fen::String)::GameState
     idx = 0
 
-    gs_squares = fill(' ', 64)
     pieces, active, castling, enpassant, _, totmoves = split(fen, " ")
     pieces_bbs = Dict([
         ('R', UInt64(0)),
@@ -68,7 +75,6 @@ function fen_to_gamestate(fen::String)::GameState
     for char in pieces
         if char in keys(symbols_to_bitboards)
             pieces_bbs[char] = set_bit(pieces_bbs[char], idx)
-            gs_squares[idx + 1] = char
             idx += 1
         elseif tryparse(Int, string(char)) !== nothing
             idx += parse(Int, char)
@@ -136,7 +142,6 @@ function fen_to_gamestate(fen::String)::GameState
         ),
         gs_white_to_move,
         gs_num_moves,
-        gs_squares,
         nothing
     )
 end
@@ -239,7 +244,7 @@ end
 function u64_to_vec(u::UInt64)::BitVector
     res = BitVector(undef, sizeof(u)*8)
     res.chunks[1] = u % UInt64
-    
+
     return res
 end
 
@@ -312,8 +317,6 @@ end
 function apply_move!(gs::GameState, move::Move)
     
     switch_bit_on_piece_bb!(gs, move.piece, move.to_square, move.from_square)
-    gs.squares[move.from_square + 1] = ' '
-    gs.squares[move.to_square + 1] = move.piece
 
     if move.captured_piece !== nothing && !move.is_enpassant
         clear_bit_on_piece_bb!(gs, move.captured_piece, move.to_square)
@@ -328,7 +331,6 @@ function apply_move!(gs::GameState, move::Move)
         if move.is_enpassant
             capture_sq = move.player_white ? gs.prev_enpassant + 8 : gs.prev_enpassant - 8
             clear_bit_on_piece_bb!(gs, move.captured_piece, capture_sq)
-            gs.squares[capture_sq + 1] = ' '
         end
 
         # DOUBLE PUSH
@@ -341,8 +343,6 @@ function apply_move!(gs::GameState, move::Move)
         if move.promotion_piece !== nothing
             clear_bit_on_piece_bb!(gs, move.piece, move.to_square)
             set_bit_on_piece_bb!(gs, move.promotion_piece, move.to_square)
-
-            gs.squares[move.to_square + 1] = move.promotion_piece
         end
     end
 
@@ -351,23 +351,15 @@ function apply_move!(gs::GameState, move::Move)
     if move.is_right_castle && move.player_white
         gs.white_rooks = clear_bit(gs.white_rooks, 63)
         gs.white_rooks = set_bit(gs.white_rooks, 61)
-        gs.squares[63] = ' '
-        gs.squares[61] = 'R'
     elseif move.is_left_castle && move.player_white
         gs.white_rooks = clear_bit(gs.white_rooks, 56)
         gs.white_rooks = set_bit(gs.white_rooks, 59)
-        gs.squares[56] = ' '
-        gs.squares[59] = 'R'
     elseif move.is_right_castle && !move.player_white
         gs.black_rooks = clear_bit(gs.black_rooks, 7)
         gs.black_rooks = set_bit(gs.black_rooks, 5)
-        gs.squares[7] = ' '
-        gs.squares[5] = 'r'
     elseif move.is_left_castle && !move.player_white
         gs.black_rooks = clear_bit(gs.black_rooks, 0)
         gs.black_rooks = set_bit(gs.black_rooks, 3)
-        gs.squares[0] = ' '
-        gs.squares[4] = 'r'
     end
 
     gs.white_to_move = !gs.white_to_move
@@ -381,12 +373,9 @@ function undo_move!(gs::GameState, move::Move)
     
     switch_bit_on_piece_bb!(gs, move.piece, move.from_square, move.to_square)
 
-    gs.squares[move.from_square + 1] = move.piece
-    gs.squares[move.to_square + 1] = ' '
 
     if move.captured_piece !== nothing && !move.is_enpassant
         set_bit_on_piece_bb!(gs, move.captured_piece, move.to_square)
-        gs.squares[move.to_square + 1] = move.captured_piece
     end
 
     gs.enpassant = gs.prev_enpassant
@@ -397,7 +386,6 @@ function undo_move!(gs::GameState, move::Move)
         if move.is_enpassant
             capture_sq = move.player_white ? gs.prev_enpassant + 8 : gs.prev_enpassant - 8
             set_bit_on_piece_bb!(gs, move.captured_piece, capture_sq)
-            gs.squares[move.to_square + 1] = move.captured_piece
         end
 
         # PROMOTION
@@ -406,8 +394,6 @@ function undo_move!(gs::GameState, move::Move)
             clear_bit_on_piece_bb!(gs, move.promotion_piece, move.to_square)
 
             captured_piece = move.captured_piece !== nothing ? move.captured_piece : ' '
-            gs.squares[move.to_square + 1] = captured_piece
-            gs.squares[move.from_square + 1] = move.piece
         end
     end
 
@@ -416,23 +402,15 @@ function undo_move!(gs::GameState, move::Move)
     if move.is_right_castle && move.player_white
         gs.white_rooks = clear_bit(gs.white_rooks, 63)
         gs.white_rooks = set_bit(gs.white_rooks, 61)
-        gs.squares[61] = ' '
-        gs.squares[63] = 'R'
     elseif move.is_left_castle && move.player_white
         gs.white_rooks = clear_bit(gs.white_rooks, 56)
         gs.white_rooks = set_bit(gs.white_rooks, 59)
-        gs.squares[59] = ' '
-        gs.squares[56] = 'R'
     elseif move.is_right_castle && !move.player_white
         gs.black_rooks = clear_bit(gs.black_rooks, 7)
         gs.black_rooks = set_bit(gs.black_rooks, 5)
-        gs.squares[5] = ' '
-        gs.squares[7] = 'r'
     elseif move.is_left_castle && !move.player_white
         gs.black_rooks = clear_bit(gs.black_rooks, 0)
         gs.black_rooks = set_bit(gs.black_rooks, 3)
-        gs.squares[4] = ' '
-        gs.squares[0] = 'r'
     end
 
     gs.white_to_move = !gs.white_to_move
@@ -448,8 +426,21 @@ export undo_move!
             @yield (piece_idx, piece)
         end
     end
-
 end
+export pieces_on_squares
+
+
+function piece_at_square(gs::GameState, idx::Int)::Union{Nothing, Char}
+    for (piece, bb) in symbols_to_bitboards
+        bb = getproperty(gs, bb)
+        if (bb << idx) % 2 == 1
+            return piece
+        end
+    end
+
+    return nothing
+end
+export piece_at_square
 
 
 end

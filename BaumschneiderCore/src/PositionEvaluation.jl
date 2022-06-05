@@ -1,6 +1,7 @@
 module PositionEvaluation
 
 
+using ..MoveRepresentation
 using ..BoardRepresentation
 using ..MoveRepresentationUtils
 
@@ -86,29 +87,25 @@ const piece_squares_tables = build_piece_squares_tables()
 
 function eval_piece_squares(move::Move)::Int
     val = 0
-    val += piece_squares_tables[move.piece][move.to_square]
-    val -= piece_squares_tables[move.piece][move.from_square]
+    val -= piece_squares_tables[move.piece][move.from_square + 1]
+    val += piece_squares_tables[move.piece][move.to_square + 1]
 
-    castle_gain = 0
     if move.is_right_castle
-        castle_gain = (2*move.player_white - 1)*14
+        val += (2*move.player_white - 1)*14
     elseif move.is_left_castle
-        castle_gain = (2*move.player_white - 1)*35
-    end
-    val += castle_gain
-
-
-    if move.captured_piece !== nothing
-        val += piece_squares_tables[move.captured_piece][move.to_square]
+        val += (2*move.player_white - 1)*35
+    elseif move.captured_piece !== nothing
+        val += piece_squares_tables[move.captured_piece][move.to_square + 1]
     end
 
     if move.promotion_piece !== nothing
-        val -= piece_squares_tables[move.piece][move.to_square]
-        val += piece_squares_tables[move.promotion_piece][move.to_square]
+        val -= piece_squares_tables[move.piece][move.to_square + 1]
+        val += piece_squares_tables[move.promotion_piece][move.to_square + 1]
     end
 
     return val
 end
+export eval_piece_squares
 
 
 function count_material_diff(gs::GameState)::Float32
@@ -140,7 +137,7 @@ function count_material_diff(gs::GameState)::Float32
         -piece_vals['K'] * n_black_kings
     )
 end
-export evaluate_position
+export count_material_diff
 
 
 end

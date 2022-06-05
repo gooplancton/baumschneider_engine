@@ -136,9 +136,8 @@ function uci_to_move(gs::GameState, uci::AbstractString)::Move
             nothing
         )
     else
-        moving_piece = gs.squares[from_square_idx]
-        captured_piece = gs.squares[to_square_idx]
-        captured_piece = captured_piece == ' ' ? nothing : captured_piece
+        moving_piece = piece_at_square(gs, from_square_idx)
+        captured_piece = piece_at_square(gs, to_square_idx)
         if lowercase(moving_piece) == 'p' && to_square_idx == gs.enpassant
             captured_piece = gs.white_to_move ? 'p' : 'P'
         end

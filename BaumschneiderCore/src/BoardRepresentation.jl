@@ -34,12 +34,8 @@ mutable struct GameState
     castling_rights_history::Vector{CastlingRights}
     castling_rights::CastlingRights
 
-
     white_to_move::Bool
     num_moves::UInt64
-
-    # redundant mailbox representation for easier iteration
-    squares::Vector{Char}
 
     best_move_from_position::Union{Move, Nothing}
 end

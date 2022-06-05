@@ -40,6 +40,9 @@ function julia_main()::Cint
             play_next_move!(engine)
             cpu_move = move_to_uci(last(engine.moves))
             println("move "*cpu_move)
+            for row in eachrow(pprint_board(engine.game_state))
+                println(row)
+            end
         elseif command[1] == "quit"
             break
         end
