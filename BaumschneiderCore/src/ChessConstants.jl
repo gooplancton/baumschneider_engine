@@ -5,25 +5,12 @@ const initial_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 export initial_fen
 
 
+const piece_symbols = ['r', 'R', 'n', 'N', 'b', 'B', 'q', 'Q', 'k', 'K', 'p', 'P']
+export piece_symbols
+
+
 const knight_directions = [6, 15, 17, 10, -6, -15, -17, -10]
 export knight_directions
-
-
-const symbols_to_bitboards = Dict(
-    'R' => :white_rooks,
-    'N' => :white_knights,
-    'B' => :white_bishops,
-    'K' => :white_king,
-    'Q' => :white_queens,
-    'P' => :white_pawns,
-    'r' => :black_rooks,
-    'n' => :black_knights,
-    'b' => :black_bishops,
-    'k' => :black_king,
-    'q' => :black_queens,
-    'p' => :black_pawns,
-)
-export symbols_to_bitboards
 
 
 const possible_promotion_pieces = ['q', 'n', 'r', 'b']
@@ -58,6 +45,7 @@ const debruijn_seq_bw = [
     13, 18,  8, 12,  7,  6,  5, 63
 ]
 export debruijn_seq_bw
+
 
 
 end

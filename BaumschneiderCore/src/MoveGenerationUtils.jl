@@ -138,7 +138,7 @@ function black_pawn_pseudolegal_moves_bb(
 )::UInt64
 
     empty_board_moves = black_pawn_moves_empty_bb(from_square)
-    pushes = empty_board_moves & ~self_occupancy
+    pushes = empty_board_moves & ~(self_occupancy | adv_occupancy)
     captures = black_pawn_attacks_empty_bb(from_square) & adv_occupancy
 
     return pushes | captures

@@ -17,8 +17,9 @@ include("Engine.jl")
 import BaumschneiderCore.Engine.start_game
 import BaumschneiderCore.Engine.push_move!
 import BaumschneiderCore.Engine.play_next_move!
-import BaumschneiderCore.MoveRepresentationUtils.uci_to_move
 import BaumschneiderCore.MoveRepresentationUtils.move_to_uci
+import BaumschneiderCore.BoardRepresentationUtils.uci_to_move
+import BaumschneiderCore.BoardRepresentationUtils.pprint_board
 
 
 function julia_main()::Cint

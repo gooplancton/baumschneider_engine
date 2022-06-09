@@ -110,12 +110,11 @@ function side_attacked_bb(gs::GameState, side_white::Bool)::UInt64
     attacks_bb = UInt64(0)
     white_occupancy = white_occupancy_bb(gs)
     black_occupancy = black_occupancy_bb(gs)
-    for (index, piece) in pieces_on_squares(gs)
-        if piece == ' ' || (isuppercase(piece) != side_white)
+    for (from_square, piece) in pieces_on_squares(gs)
+        if piece === nothing || (isuppercase(piece) != side_white)
             continue
         end
 
-        from_square = index - 1
         moves_bb = piece_moves_bb(piece, from_square, white_occupancy, black_occupancy)
         attacks_bb |= moves_bb
     end
@@ -219,9 +218,9 @@ end
 function generate_pseudolegal_moves(gs::GameState, white_occupancy::UInt64, black_occupancy::UInt64)::Vector{Move}
 
     moves = []
-    for (index, piece) in pieces_on_squares(gs)
+    for (from_square, piece) in pieces_on_squares(gs)
 
-        if piece == ' '
+        if piece === nothing
             continue
         end
 
@@ -230,7 +229,6 @@ function generate_pseudolegal_moves(gs::GameState, white_occupancy::UInt64, blac
             continue
         end
 
-        from_square = index - 1
         moves_bb = piece_moves_bb(piece, from_square, white_occupancy, black_occupancy)
         to_squares = bb_set_bits_idxs(moves_bb)
         for to_square in to_squares
@@ -247,6 +245,7 @@ function generate_pseudolegal_moves(gs::GameState, white_occupancy::UInt64, blac
 
     return moves
 end
+export generate_pseudolegal_moves # REMOVE LATER
 
 
 const rays_bbs = Dict(
@@ -259,6 +258,7 @@ const rays_bbs = Dict(
     (false, 1) => west_rays_bb,
     (true, 1) => east_rays_bb
 )
+
 
 
 function check_ray_bb(from_square::Int, king_square::Int)::UInt64
@@ -343,7 +343,7 @@ function is_move_absolute_pin(move::Move, king_square::Int, self_occupancy_bb::U
 end
 
 
-@resumable function generate_legal_moves(gs::GameState)::Move
+@resumable function generate_legal_moves(gs::GameState, only_captures::Bool = false)::Move
 
     ## GENERATE MOVES FOR OPPOSING PLAYER (ATTACKED SQUARES)
     white_occupancy = white_occupancy_bb(gs)
@@ -376,12 +376,12 @@ end
     pawns_bb = gs.white_to_move ? gs.white_pawns : gs.black_pawns
     
     left_castle_move = generate_left_castle_move(gs)
-    if left_castle_move !== nothing
+    if left_castle_move !== nothing && !only_captures
         @yield left_castle_move
     end
 
     right_castle_move = generate_right_castle_move(gs)
-    if right_castle_move !== nothing
+    if right_castle_move !== nothing && !only_captures
         @yield right_castle_move
     end
 
@@ -402,12 +402,18 @@ end
     if promovable_pawns_bb != 0
         promotion_moves = generate_promotion_moves(gs, promovable_pawns_bb)
         for move in promotion_moves
-            @yield move
+            if move.captured_piece !== nothing || !only_captures
+                @yield move
+            end
         end
     end
 
     for move in generate_pseudolegal_moves(gs, white_occupancy, black_occupancy)
         if is_legal_move(gs, move, self_occupancy_bb, adv_attacked_noking_bb, pieces_attacking_king_bb, pieces_pinning_bb)
+            if move.captured_piece == nothing && only_captures
+                continue
+            end
+
             @yield move
         end
     end

@@ -7,12 +7,14 @@ using ..BoardRepresentationUtils
 using ..PositionEvaluation
 
 
-function minimax_search_max(gs::GameState, depth::Int, alpha::Float32, beta::Float32)::Float32
-    if depth == 0 
+function minimax_search_max(gs::GameState, depth::Int, alpha::Float32, beta::Float32, quiesce::Bool=false)::Float32
+    if depth == 0 && quiesce
         return count_material_diff(gs)
+    elseif depth == 0
+        return minimax_search_max(gs, depth, alpha, beta, true)
     end
 
-    moves = generate_legal_moves(gs)
+    moves = generate_legal_moves(gs, quiesce)
     n_moves = 0
 
     for move in moves
@@ -45,18 +47,20 @@ function minimax_search_max(gs::GameState, depth::Int, alpha::Float32, beta::Flo
    return alpha
 end
 
-function minimax_search_min(gs::GameState, depth::Int, alpha::Float32, beta::Float32)::Float32
-    if depth == 0 
+function minimax_search_min(gs::GameState, depth::Int, alpha::Float32, beta::Float32, quiesce::Bool=false)::Float32
+    if depth == 0 && quiesce
         return count_material_diff(gs)
+    elseif depth == 0
+        return minimax_search_min(gs, depth, alpha, beta, true)
     end
 
-    moves = generate_legal_moves(gs)
+    moves = generate_legal_moves(gs, quiesce)
     n_moves = 0
 
     for move in moves
         n_moves += 1
         apply_move!(gs, move)
-        material_score = minimax_search_min(gs, depth-1, alpha, beta)
+        material_score = minimax_search_min(gs, depth-1, alpha, beta, quiesce)
         move_score = eval_piece_squares(move)
         score = material_score + move_score
         undo_move!(gs, move)
@@ -65,7 +69,7 @@ function minimax_search_min(gs::GameState, depth::Int, alpha::Float32, beta::Flo
         end
         
         if score < beta
-            gs.best_move_from_position = move
+            #gs.best_move_from_position = move
             beta = score
         end
     end

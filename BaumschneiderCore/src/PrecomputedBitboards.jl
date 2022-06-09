@@ -22,7 +22,7 @@ function knight_attacks_empty_bb(from_square::Int)::UInt64
     from_square_bb = idx_to_bb(from_square)
     attack_bb = UInt64(0)
 
-    for i in knight_directions
+    for i in (6, 15, 17, 10, -6, -15, -17, -10)
         attack_bb |= set_bit(attack_bb, from_square + i)
     end
 

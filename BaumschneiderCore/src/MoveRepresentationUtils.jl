@@ -77,101 +77,6 @@ end
 export move_to_uci
 
 
-function uci_to_move(gs::GameState, uci::AbstractString)::Move
-
-    from_sq_letter = uci[1]
-    from_sq_num = uci[2]
-    from_square_idx = alg_to_idx(from_sq_letter, from_sq_num)
-
-    to_sq_letter = uci[3]
-    to_sq_num = uci[4]
-    to_square_idx = alg_to_idx(to_sq_letter, to_sq_num)
-
-    if uci == "e1g1"
-        return Move(
-            'K',
-            true,
-            from_square_idx,
-            to_square_idx,
-            true,
-            false,
-            false,
-            nothing,
-            nothing
-        )
-    elseif uci == "e1c1"
-        return Move(
-            'K',
-            true,
-            from_square_idx,
-            to_square_idx,
-            false,
-            true,
-            false,
-            nothing,
-            nothing
-        )
-    elseif uci == "e8g8"
-        return Move(
-            'k',
-            true,
-            from_square_idx,
-            to_square_idx,
-            true,
-            false,
-            false,
-            nothing,
-            nothing
-        )
-    elseif uci == "e8c8"
-        return Move(
-            'k',
-            true,
-            from_square_idx,
-            to_square_idx,
-            false,
-            true,
-            false,
-            nothing,
-            nothing
-        )
-    else
-        moving_piece = piece_at_square(gs, from_square_idx)
-        captured_piece = piece_at_square(gs, to_square_idx)
-        if lowercase(moving_piece) == 'p' && to_square_idx == gs.enpassant
-            captured_piece = gs.white_to_move ? 'p' : 'P'
-        end
-
-        if length(uci) == 5
-            promotion_piece_lc = uci[5]
-            promotion_piece = gs.white_to_move ? uppercase(promotion_piece) : promotion_piece_lc
-
-            return Move(
-                moving_piece,
-                gs.white_to_move,
-                from_square_idx,
-                to_square_idx,
-                false,
-                false,
-                false,
-                false,
-                promotion_piece
-            )
-        else
-            return parse_simple_move(
-                moving_piece,
-                gs.white_to_move,
-                from_square_idx,
-                to_square_idx,
-                captured_piece
-            )
-        end
-    end
-
-end
-export uci_to_move
-
-
 function set_bit(bitboard::UInt64, idx::Int)::UInt64
     return bitboard | (1 << idx)
 end
@@ -224,12 +129,12 @@ export file_to_bb
 
 
 function bitscan_forward(bb::UInt64)::Int
-
+    
     if bb == 0
         return -1
     end
 
-    return debruijn_seq_fw[(((bb & -bb) * debruijn64) >> 58) + 1]
+    @inbounds return debruijn_seq_fw[(((bb & -bb) * debruijn64) >> 58) + 1]
 end
 export bitscan_forward
 
@@ -247,7 +152,7 @@ function bitscan_backward(bb::UInt64)::Int
     bb |= bb >> 16
     bb |= bb >> 32
 
-    return debruijn_seq_bw[((bb * debruijn64) >> 58) + 1]
+    @inbounds return debruijn_seq_bw[((bb * debruijn64) >> 58) + 1]
 end
 export bitscan_backward
 

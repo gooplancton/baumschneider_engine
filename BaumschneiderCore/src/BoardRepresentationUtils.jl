@@ -37,13 +37,75 @@ function pprint_board(gs::GameState)::Array{Char}
     squares = []
     for idx in 0:63
         piece = piece_at_square(gs, idx)
-        piece = piece === nothing ? piece : ' '
-        push!(squars, piece)
+        piece = piece !== nothing ? piece : ' '
+        push!(squares, piece)
     end
     
     return permutedims(reshape(squares, (8, 8)))
 end
 export pprint_board
+
+
+
+function get_piece_bb(gs::GameState, piece::Char)::UInt64
+    if piece == 'p'
+        return gs.black_pawns
+    elseif piece == 'P'
+        return gs.white_pawns
+    elseif piece == 'r'
+        return gs.black_rooks
+    elseif piece == 'R'
+        return gs.white_rooks
+    elseif piece == 'n'
+        return gs.black_knights
+    elseif piece == 'N'
+        return gs.white_knights
+    elseif piece == 'b'
+        return gs.black_bishops
+    elseif piece == 'B'
+        return gs.white_bishops
+    elseif piece == 'q'
+        return gs.black_queens
+    elseif piece == 'Q'
+        return gs.white_queens
+    elseif piece == 'k'
+        return gs.black_king
+    elseif piece == 'K'
+        return gs.white_king
+    end
+end
+export get_piece_bb
+
+
+function set_piece_bb!(gs::GameState, piece::Char, bb::UInt64)
+    if piece == 'p'
+        gs.black_pawns = bb
+    elseif piece == 'P'
+        gs.white_pawns = bb
+    elseif piece == 'r'
+        gs.black_rooks = bb
+    elseif piece == 'R'
+        gs.white_rooks = bb
+    elseif piece == 'n'
+        gs.black_knights = bb
+    elseif piece == 'N'
+        gs.white_knights = bb
+    elseif piece == 'b'
+        gs.black_bishops = bb
+    elseif piece == 'B'
+        gs.white_bishops = bb
+    elseif piece == 'q'
+        gs.black_queens = bb
+    elseif piece == 'Q'
+        gs.white_queens = bb
+    elseif piece == 'k'
+        gs.black_king = bb
+    elseif piece == 'K'
+        gs.white_king = bb
+    end
+end
+export set_piece_bb
+
 
 
 """
@@ -73,7 +135,7 @@ function fen_to_gamestate(fen::String)::GameState
 
     ## PIECE LAYOUT
     for char in pieces
-        if char in keys(symbols_to_bitboards)
+        if char in piece_symbols
             pieces_bbs[char] = set_bit(pieces_bbs[char], idx)
             idx += 1
         elseif tryparse(Int, string(char)) !== nothing
@@ -149,95 +211,23 @@ export fen_to_gamestate
 
 
 function set_bit_on_piece_bb!(gs::GameState, piece::Char, idx::Int)
-    
-    if piece == 'p'
-        gs.black_pawns = set_bit(gs.black_pawns, idx)
-    elseif piece == 'P'
-        gs.white_pawns = set_bit(gs.white_pawns, idx)
-    elseif piece == 'r'
-        gs.black_rooks = set_bit(gs.black_rooks, idx)
-    elseif piece == 'R'
-        gs.white_rooks = set_bit(gs.white_rooks, idx)
-    elseif piece == 'n'
-        gs.black_knights = set_bit(gs.black_knights, idx)
-    elseif piece == 'N'
-        gs.white_knights = set_bit(gs.white_knights, idx)
-    elseif piece == 'b'
-        gs.black_bishops = set_bit(gs.black_bishops, idx)
-    elseif piece == 'B'
-        gs.white_bishops = set_bit(gs.white_bishops, idx)
-    elseif piece == 'q'
-        gs.black_queens = set_bit(gs.black_queens, idx)
-    elseif piece == 'Q'
-        gs.white_queens = set_bit(gs.white_queens, idx)
-    elseif piece == 'k'
-        gs.black_king = set_bit(gs.black_king, idx)
-    elseif piece == 'K'
-        gs.white_king = set_bit(gs.white_king, idx)
-    end
-
+    bb = get_piece_bb(gs, piece)
+    bb = set_bit(bb, idx)
+    set_piece_bb!(gs, piece, bb)
 end
 
 
 function clear_bit_on_piece_bb!(gs::GameState, piece::Char, idx::Int)
-    
-    if piece == 'p'
-        gs.black_pawns = clear_bit(gs.black_pawns, idx)
-    elseif piece == 'P'
-        gs.white_pawns = clear_bit(gs.white_pawns, idx)
-    elseif piece == 'r'
-        gs.black_rooks = clear_bit(gs.black_rooks, idx)
-    elseif piece == 'R'
-        gs.white_rooks = clear_bit(gs.white_rooks, idx)
-    elseif piece == 'n'
-        gs.black_knights = clear_bit(gs.black_knights, idx)
-    elseif piece == 'N'
-        gs.white_knights = clear_bit(gs.white_knights, idx)
-    elseif piece == 'b'
-        gs.black_bishops = clear_bit(gs.black_bishops, idx)
-    elseif piece == 'B'
-        gs.white_bishops = clear_bit(gs.white_bishops, idx)
-    elseif piece == 'q'
-        gs.black_queens = clear_bit(gs.black_queens, idx)
-    elseif piece == 'Q'
-        gs.white_queens = clear_bit(gs.white_queens, idx)
-    elseif piece == 'k'
-        gs.black_king = clear_bit(gs.black_king, idx)
-    elseif piece == 'K'
-        gs.white_king = clear_bit(gs.white_king, idx)
-    end
-
+    bb = get_piece_bb(gs, piece)
+    bb = clear_bit(bb, idx)
+    set_piece_bb!(gs, piece, bb)
 end
 
 
 function switch_bit_on_piece_bb!(gs::GameState, piece::Char, idx_set::Int, idx_unset::Int)
-    
-    if piece == 'p'
-        gs.black_pawns = set_bit(clear_bit(gs.black_pawns, idx_unset), idx_set)
-    elseif piece == 'P'
-        gs.white_pawns = set_bit(clear_bit(gs.white_pawns, idx_unset), idx_set)
-    elseif piece == 'r'
-        gs.black_rooks = set_bit(clear_bit(gs.black_rooks, idx_unset), idx_set)
-    elseif piece == 'R'
-        gs.white_rooks = set_bit(clear_bit(gs.white_rooks, idx_unset), idx_set)
-    elseif piece == 'n'
-        gs.black_knights = set_bit(clear_bit(gs.black_knights, idx_unset), idx_set)
-    elseif piece == 'N'
-        gs.white_knights = set_bit(clear_bit(gs.white_knights, idx_unset), idx_set)
-    elseif piece == 'b'
-        gs.black_bishops = set_bit(clear_bit(gs.black_bishops, idx_unset), idx_set)
-    elseif piece == 'B'
-        gs.white_bishops = set_bit(clear_bit(gs.white_bishops, idx_unset), idx_set)
-    elseif piece == 'q'
-        gs.black_queens = set_bit(clear_bit(gs.black_queens, idx_unset), idx_set)
-    elseif piece == 'Q'
-        gs.white_queens = set_bit(clear_bit(gs.white_queens, idx_unset), idx_set)
-    elseif piece == 'k'
-        gs.black_king = set_bit(clear_bit(gs.black_king, idx_unset), idx_set)
-    elseif piece == 'K'
-        gs.white_king = set_bit(clear_bit(gs.white_king, idx_unset), idx_set)
-    end
-
+    bb = get_piece_bb(gs, piece)
+    bb = set_bit(clear_bit(bb, idx_unset), idx_set)
+    set_piece_bb!(gs, piece, bb)
 end
 
 
@@ -420,20 +410,10 @@ end
 export undo_move!
 
 
-@resumable function pieces_on_squares(gs::GameState)::Tuple{Int, Char}
-    for (piece, bb) in symbols_to_bitboards
-        for piece_idx in bb_set_bits_idxs(getproperty(gs, bb))
-            @yield (piece_idx, piece)
-        end
-    end
-end
-export pieces_on_squares
-
-
 function piece_at_square(gs::GameState, idx::Int)::Union{Nothing, Char}
-    for (piece, bb) in symbols_to_bitboards
-        bb = getproperty(gs, bb)
-        if (bb << idx) % 2 == 1
+    for piece in piece_symbols
+        bb = get_piece_bb(gs, piece)
+        if (bb >> idx) % 2 == 1
             return piece
         end
     end
@@ -441,6 +421,115 @@ function piece_at_square(gs::GameState, idx::Int)::Union{Nothing, Char}
     return nothing
 end
 export piece_at_square
+
+
+function pieces_on_squares(gs::GameState)::Vector{Tuple{Int, Char}}
+    squares = []
+    for piece_idx in 0:63
+        piece = piece_at_square(gs, piece_idx)
+        if piece !== nothing
+            push!(squares, (piece_idx, piece))
+        end
+    end
+
+    @inbounds return squares
+end
+export pieces_on_squares
+
+
+function uci_to_move(gs::GameState, uci::AbstractString)::Move
+
+    from_sq_letter = uci[1]
+    from_sq_num = uci[2]
+    from_square_idx = alg_to_idx(from_sq_letter, from_sq_num)
+
+    to_sq_letter = uci[3]
+    to_sq_num = uci[4]
+    to_square_idx = alg_to_idx(to_sq_letter, to_sq_num)
+
+    if uci == "e1g1"
+        return Move(
+            'K',
+            true,
+            from_square_idx,
+            to_square_idx,
+            true,
+            false,
+            false,
+            nothing,
+            nothing
+        )
+    elseif uci == "e1c1"
+        return Move(
+            'K',
+            true,
+            from_square_idx,
+            to_square_idx,
+            false,
+            true,
+            false,
+            nothing,
+            nothing
+        )
+    elseif uci == "e8g8"
+        return Move(
+            'k',
+            true,
+            from_square_idx,
+            to_square_idx,
+            true,
+            false,
+            false,
+            nothing,
+            nothing
+        )
+    elseif uci == "e8c8"
+        return Move(
+            'k',
+            true,
+            from_square_idx,
+            to_square_idx,
+            false,
+            true,
+            false,
+            nothing,
+            nothing
+        )
+    else
+        moving_piece = piece_at_square(gs, from_square_idx)
+        captured_piece = piece_at_square(gs, to_square_idx)
+        if lowercase(moving_piece) == 'p' && to_square_idx == gs.enpassant
+            captured_piece = gs.white_to_move ? 'p' : 'P'
+        end
+
+        if length(uci) == 5
+            promotion_piece_lc = uci[5]
+            promotion_piece = gs.white_to_move ? uppercase(promotion_piece) : promotion_piece_lc
+
+            return Move(
+                moving_piece,
+                gs.white_to_move,
+                from_square_idx,
+                to_square_idx,
+                false,
+                false,
+                false,
+                false,
+                promotion_piece
+            )
+        else
+            return parse_simple_move(
+                moving_piece,
+                gs.white_to_move,
+                from_square_idx,
+                to_square_idx,
+                captured_piece
+            )
+        end
+    end
+
+end
+export uci_to_move
 
 
 end
