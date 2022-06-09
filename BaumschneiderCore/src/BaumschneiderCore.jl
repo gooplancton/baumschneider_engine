@@ -37,7 +37,13 @@ function julia_main()::Cint
         elseif command[1] == "usermove"
             uci_move = command[2]
             move = uci_to_move(engine.game_state, uci_move)
-            push_move!(engine, move)
+
+            if is_legal_usermove(move)
+                push_move!(engine, move)
+            else
+                throw(error("illegal move"))
+            end
+
             play_next_move!(engine)
             cpu_move = move_to_uci(last(engine.moves))
             println("move "*cpu_move)

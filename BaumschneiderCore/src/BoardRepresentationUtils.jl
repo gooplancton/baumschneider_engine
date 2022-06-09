@@ -245,49 +245,48 @@ function pprint_bb(bb::UInt64)
 end
 
 
-function update_castling_rights!(gs::GameState, move::Move)
-    push!(gs.castling_rights_history, gs.castling_rights)
+function compute_new_castling_rights(gs::GameState, move::Move)::Union{CastlingRights, Nothing}
+    new_castling_rights = nothing
+
     if move.is_left_castle || move.is_right_castle
-        gs.castling_rights = CastlingRights(false, false, false, false)
+        new_castling_rights = CastlingRights(false, false, false, false)
     elseif move.piece == 'K'
-        gs.castling_rights = CastlingRights(
+        new_castling_rights = CastlingRights(
             false,
             false,
             gs.castling_rights.black_can_castle_left,
             gs.castling_rights.black_can_castle_right
         )
     elseif move.piece == 'k'
-        new_rights = CastlingRights(
+        new_castling_rights = CastlingRights(
             gs.castling_rights.white_can_castle_left,
             gs.castling_rights.white_can_castle_right,
             false,
             false,
         )
     elseif move.piece == 'R' && move.from_square == 56 # Q
-        new_rights = CastlingRights(
+        new_castling_rights = CastlingRights(
             false,
             gs.castling_rights.white_can_castle_right,
             gs.castling_rights.black_can_castle_left,
             gs.castling_rights.black_can_castle_right
         )
     elseif move.piece == 'R' && move.from_square == 63 # K
-        new_rights = CastlingRights(
+        new_castling_rights = CastlingRights(
             gs.castling_rights.white_can_castle_left,
             false,
             gs.castling_rights.black_can_castle_left,
             gs.castling_rights.black_can_castle_right
         )
     elseif move.piece == 'r' && move.from_square == 0 # q
-        push!(gs.castling_rights_history, gs.castling_rights)
-        new_rights = CastlingRights(
+        new_castling_rights = CastlingRights(
             gs.castling_rights.white_can_castle_left,
             gs.castling_rights.white_can_castle_right,
             false,
             gs.castling_rights.black_can_castle_right
         )
     elseif move.piece == 'r' && move.from_square == 7 # k
-        push!(gs.castling_rights_history, gs.castling_rights)
-        new_rights = CastlingRights(
+        new_castling_rights = CastlingRights(
             gs.castling_rights.white_can_castle_left,
             gs.castling_rights.white_can_castle_right,
             gs.castling_rights.black_can_castle_left,
@@ -295,39 +294,49 @@ function update_castling_rights!(gs::GameState, move::Move)
         )
     end
 
-    return nothing
+    return new_castling_rights
 end
 
 
-function revert_castling_rights!(gs::GameState)
-    gs.castling_rights = pop!(gs.castling_rights_history)
+function update_castling_rights!(gs::GameState, move::Move)
+    new_castling_rights = compute_new_castling_rights(gs, move)
+    if new_castling_rights !== nothing
+        push!(gs.castling_rights_history, gs.castling_rights)
+        gs.castling_rights = new_castling_rights
+    end
+end
+
+
+function revert_castling_rights!(gs::GameState, move::Move)
+    new_castling_rights = compute_new_castling_rights(gs, move)
+    if new_castling_rights !== nothing
+        gs.castling_rights = pop!(gs.castling_rights_history)
+    end
 end
 
 
 function apply_move!(gs::GameState, move::Move)
     
+    gs.num_moves += 1
     switch_bit_on_piece_bb!(gs, move.piece, move.to_square, move.from_square)
 
     if move.captured_piece !== nothing && !move.is_enpassant
         clear_bit_on_piece_bb!(gs, move.captured_piece, move.to_square)
     end
 
-    gs.prev_enpassant = gs.enpassant
-    gs.enpassant = nothing
     if (move.piece == 'P') | (move.piece == 'p')
-
-
         # ENPASSANT
         if move.is_enpassant
-            capture_sq = move.player_white ? gs.prev_enpassant + 8 : gs.prev_enpassant - 8
+            capture_sq = move.to_square + 8 * (2*move.player_white - 1)
             clear_bit_on_piece_bb!(gs, move.captured_piece, capture_sq)
         end
 
         # DOUBLE PUSH
         if abs(move.to_square - move.from_square) == 16
-            gs.enpassant = (move.to_square + move.from_square) >> 1
+            gs.enpassant_history[gs.num_moves] = (move.to_square + move.from_square) >> 1
+        else
+            gs.enpassant_history[gs.num_moves] = nothing
         end
-
 
         # PROMOTION
         if move.promotion_piece !== nothing
@@ -361,20 +370,18 @@ export apply_move!
 
 function undo_move!(gs::GameState, move::Move)
     
+    gs.num_moves -= 1
     switch_bit_on_piece_bb!(gs, move.piece, move.from_square, move.to_square)
-
 
     if move.captured_piece !== nothing && !move.is_enpassant
         set_bit_on_piece_bb!(gs, move.captured_piece, move.to_square)
     end
 
-    gs.enpassant = gs.prev_enpassant
-    gs.prev_enpassant = nothing
+    gs.enpassant_history[gs.num_moves + 1] = nothing  # not sure if needed
     if (move.piece == 'P') | (move.piece == 'p')
-
         # ENPASSANT
         if move.is_enpassant
-            capture_sq = move.player_white ? gs.prev_enpassant + 8 : gs.prev_enpassant - 8
+            capture_sq = move.to_square + 8 * (2*move.player_white - 1)
             set_bit_on_piece_bb!(gs, move.captured_piece, capture_sq)
         end
 
@@ -382,8 +389,6 @@ function undo_move!(gs::GameState, move::Move)
         if move.promotion_piece !== nothing
             set_bit_on_piece_bb!(gs, move.piece, move.to_square)
             clear_bit_on_piece_bb!(gs, move.promotion_piece, move.to_square)
-
-            captured_piece = move.captured_piece !== nothing ? move.captured_piece : ' '
         end
     end
 

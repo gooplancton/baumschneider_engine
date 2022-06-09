@@ -34,7 +34,7 @@ function minimax_search_max(gs::GameState, depth::Int, alpha::Float32, beta::Flo
         end
     end
 
-    if n_moves == 0
+    if n_moves == 0 && !quiesce
         if is_white_king_in_check(gs)
             return -Inf32  # black wins
         elseif is_black_king_in_check(gs)
@@ -74,7 +74,7 @@ function minimax_search_min(gs::GameState, depth::Int, alpha::Float32, beta::Flo
         end
     end
 
-    if n_moves == 0
+    if n_moves == 0 && !quiesce
         if is_white_king_in_check(gs)
             return -Inf32  # black wins
         elseif is_black_king_in_check(gs)

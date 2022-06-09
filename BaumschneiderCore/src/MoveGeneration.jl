@@ -38,11 +38,12 @@ end
 
 
 function generate_enpassant_move(gs::GameState, offset::Int, pawns_bb::UInt64)::Union{Move, Nothing}
-    if gs.enpassant === nothing
+    enpassant_square = gs.enpassant_history[gs.num_moves]
+    if enpassant_square === nothing
         return nothing
     end
 
-    pawn_should_be_idx = gs.enpassant + offset
+    pawn_should_be_idx = enpassant_square + offset
     pawn_should_be_bb = idx_to_bb(pawn_should_be_idx)
     piece = gs.white_to_move ? 'P' : 'p'
     captured_piece = gs.white_to_move ? 'p' : 'P'

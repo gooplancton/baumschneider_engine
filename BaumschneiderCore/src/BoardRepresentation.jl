@@ -28,8 +28,7 @@ mutable struct GameState
     black_bishops::UInt64
     black_rooks::UInt64
 
-    prev_enpassant::Union{Int, Nothing}
-    enpassant::Union{Int, Nothing}
+    enpassant_history::Dict{Int, Union{Int, Nothing}}
 
     castling_rights_history::Vector{CastlingRights}
     castling_rights::CastlingRights
