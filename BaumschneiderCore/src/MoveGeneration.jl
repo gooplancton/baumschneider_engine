@@ -204,7 +204,7 @@ function generate_right_castle_move(gs::GameState)::Union{Move, Nothing}
             gs.white_to_move ? 'K' : 'k',
             gs.white_to_move,
             king_square_idx,
-            king_square_idx - 2,
+            king_square_idx + 2,
             true,
             false,
             false,
