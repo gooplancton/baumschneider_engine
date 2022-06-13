@@ -254,7 +254,7 @@ function compute_new_castling_rights(gs::GameState, move::Move)::Union{CastlingR
             gs.castling_rights.black_can_castle_left,
             gs.castling_rights.black_can_castle_right
         )
-    elseif move.piece == 'k' || ((move.is_left_castle || move.is_right_castle) && move.player_black)
+    elseif move.piece == 'k' || ((move.is_left_castle || move.is_right_castle) && !move.player_white)
         new_castling_rights = CastlingRights(
             gs.castling_rights.white_can_castle_left,
             gs.castling_rights.white_can_castle_right,
