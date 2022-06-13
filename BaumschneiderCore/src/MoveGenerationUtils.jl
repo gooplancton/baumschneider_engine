@@ -113,7 +113,7 @@ function king_pseudolegal_moves_bb(
 )::UInt64
 
     empty_board_moves = king_attacks_empty_bb(from_square)
-    return empty_board_moves & ~(self_occupancy | adv_occupancy)
+    return empty_board_moves & ~self_occupancy
 end
 
 

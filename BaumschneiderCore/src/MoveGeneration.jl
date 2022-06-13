@@ -38,15 +38,20 @@ end
 
 
 function generate_enpassant_move(gs::GameState, offset::Int, pawns_bb::UInt64)::Union{Move, Nothing}
-    enpassant_square = gs.enpassant_history[gs.num_moves]
-    if enpassant_square === nothing
+    if !haskey(gs.enpassant_history, gs.num_moves - 1)
         return nothing
     end
-
+    
+    enpassant_square = gs.enpassant_history[gs.num_moves - 1]
     pawn_should_be_idx = enpassant_square + offset
     pawn_should_be_bb = idx_to_bb(pawn_should_be_idx)
-    piece = gs.white_to_move ? 'P' : 'p'
-    captured_piece = gs.white_to_move ? 'p' : 'P'
+    if gs.white_to_move
+        piece = 'P'
+        captured_piece = 'p'
+    else
+        piece = 'p'
+        captured_piece = 'P'
+    end
 
     if (pawn_should_be_bb & pawns_bb) != 0
         return Move(
@@ -315,7 +320,7 @@ function is_legal_move(
     for pinning_piece_idx in bb_set_bits_idxs(pieces_pinning_bb)
         pin_ray = check_ray_bb(pinning_piece_idx, king_square) | idx_to_bb(pinning_piece_idx)
         pinned_piece_idx = bitscan_forward(pin_ray & self_occupancy_bb)
-        
+
         if move.from_square == pinned_piece_idx
             return (pin_ray & idx_to_bb(move.to_square)) != 0
         end
@@ -326,7 +331,7 @@ function is_legal_move(
         apply_move!(gs, move)
         legal = !moving_side_can_capture_king(gs)
         undo_move!(gs, move)
-        
+
         return legal
     end
 

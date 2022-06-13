@@ -166,7 +166,7 @@ function fen_to_gamestate(fen::String)::GameState
         castling_rights[key] = occursin(key, castling)
     end
 
-    gs_enpassant = nothing
+    gs_enpassant = Dict()
 
     # EN PASSANT
     if length(enpassant) == 2
@@ -193,7 +193,6 @@ function fen_to_gamestate(fen::String)::GameState
         pieces_bbs['n'],
         pieces_bbs['b'],
         pieces_bbs['r'],
-        nothing,
         gs_enpassant,
         [],
         CastlingRights(
@@ -248,44 +247,46 @@ end
 function compute_new_castling_rights(gs::GameState, move::Move)::Union{CastlingRights, Nothing}
     new_castling_rights = nothing
 
-    if move.is_left_castle || move.is_right_castle
-        new_castling_rights = CastlingRights(false, false, false, false)
-    elseif move.piece == 'K'
+    if move.piece == 'K' || ((move.is_left_castle || move.is_right_castle) && move.player_white)
         new_castling_rights = CastlingRights(
             false,
             false,
             gs.castling_rights.black_can_castle_left,
             gs.castling_rights.black_can_castle_right
         )
-    elseif move.piece == 'k'
+    elseif move.piece == 'k' || ((move.is_left_castle || move.is_right_castle) && move.player_black)
         new_castling_rights = CastlingRights(
             gs.castling_rights.white_can_castle_left,
             gs.castling_rights.white_can_castle_right,
             false,
             false,
         )
-    elseif move.piece == 'R' && move.from_square == 56 # Q
+    elseif ((move.piece == 'R' && move.from_square == 56)
+            || (move.captured_piece == 'R' && move.to_square == 56)) # Q
         new_castling_rights = CastlingRights(
             false,
             gs.castling_rights.white_can_castle_right,
             gs.castling_rights.black_can_castle_left,
             gs.castling_rights.black_can_castle_right
         )
-    elseif move.piece == 'R' && move.from_square == 63 # K
+    elseif ((move.piece == 'R' && move.from_square == 63)
+            || (move.captured_piece == 'R' && move.to_square == 63))  # K
         new_castling_rights = CastlingRights(
             gs.castling_rights.white_can_castle_left,
             false,
             gs.castling_rights.black_can_castle_left,
             gs.castling_rights.black_can_castle_right
         )
-    elseif move.piece == 'r' && move.from_square == 0 # q
+    elseif ((move.piece == 'r' && move.from_square == 0)
+            || (move.captured_piece == 'r' && move.to_square == 0)) # q
         new_castling_rights = CastlingRights(
             gs.castling_rights.white_can_castle_left,
             gs.castling_rights.white_can_castle_right,
             false,
             gs.castling_rights.black_can_castle_right
         )
-    elseif move.piece == 'r' && move.from_square == 7 # k
+    elseif ((move.piece == 'r' && move.from_square == 7)
+            || (move.captured_piece == 'r' && move.to_square == 7)) # k
         new_castling_rights = CastlingRights(
             gs.castling_rights.white_can_castle_left,
             gs.castling_rights.white_can_castle_right,
@@ -503,7 +504,10 @@ function uci_to_move(gs::GameState, uci::AbstractString)::Move
     else
         moving_piece = piece_at_square(gs, from_square_idx)
         captured_piece = piece_at_square(gs, to_square_idx)
-        if lowercase(moving_piece) == 'p' && to_square_idx == gs.enpassant
+        if (lowercase(moving_piece) == 'p'
+            && haskey(gs.enpassant_history, gs.num_moves -1)
+            && (to_square_idx == gs.enpassant_history[gs.num_moves - 1]))
+
             captured_piece = gs.white_to_move ? 'p' : 'P'
         end
 

@@ -44,7 +44,7 @@ function minimax_search_max(gs::GameState, depth::Int, alpha::Float32, beta::Flo
         end
     end
 
-   return alpha
+    return alpha
 end
 
 function minimax_search_min(gs::GameState, depth::Int, alpha::Float32, beta::Float32, quiesce::Bool=false)::Float32
@@ -88,7 +88,11 @@ function minimax_search_min(gs::GameState, depth::Int, alpha::Float32, beta::Flo
 end
 
 
-minimax_search!(gs::GameState, depth::Int)::Float32 = minimax_search_max(gs, depth, -Inf32, +Inf32)
+minimax_search!(gs::GameState, depth::Int)::Float32 = (
+    gs.white_to_move 
+    ? minimax_search_max(gs, depth, -Inf32, +Inf32)
+    : minimax_search_min(gs, depth, -Inf32, +Inf32)
+)    
 export minimax_search!
 
 
