@@ -373,7 +373,7 @@ end
         adv_attacked_squares_bb |= idx_to_bb(adv_move.to_square)
         if (adv_move.to_square == king_square)
             pieces_attacking_king_bb |= idx_to_bb(adv_move.from_square)
-        elseif is_move_absolute_pin(adv_move, king_square, self_occupancy_bb)
+        elseif adv_move.captured_piece !== nothing && is_move_absolute_pin(adv_move, king_square, self_occupancy_bb)
             pieces_pinning_bb |= idx_to_bb(adv_move.from_square)
         end
     end
@@ -394,13 +394,17 @@ end
     right_enp_offset = gs.white_to_move ? -7 : 9
     right_enpassant_move = generate_enpassant_move(gs, right_enp_offset, pawns_bb)
     if right_enpassant_move !== nothing
-        @yield right_enpassant_move
+        if is_legal_move(gs, move, self_occupancy_bb, adv_attacked_noking_bb, pieces_attacking_king_bb, pieces_pinning_bb)
+            @yield right_enpassant_move
+        end
     end
 
     left_enp_offset = gs.white_to_move ? -9 : 7
     left_enpassant_move = generate_enpassant_move(gs, left_enp_offset, pawns_bb)
     if left_enpassant_move !== nothing
-        @yield left_enpassant_move
+        if is_legal_move(gs, move, self_occupancy_bb, adv_attacked_noking_bb, pieces_attacking_king_bb, pieces_pinning_bb)
+            @yield left_enpassant_move
+        end
     end
 
     promovable_row_bb = gs.white_to_move ? rank_bbs[7] : rank_bbs[2]
@@ -409,17 +413,22 @@ end
         promotion_moves = generate_promotion_moves(gs, promovable_pawns_bb)
         for move in promotion_moves
             if move.captured_piece !== nothing || !only_captures
+                continue
+            end
+
+            if is_legal_move(gs, move, self_occupancy_bb, adv_attacked_noking_bb, pieces_attacking_king_bb, pieces_pinning_bb)
                 @yield move
             end
         end
     end
 
     for move in generate_pseudolegal_moves(gs, white_occupancy, black_occupancy)
-        if is_legal_move(gs, move, self_occupancy_bb, adv_attacked_noking_bb, pieces_attacking_king_bb, pieces_pinning_bb)
-            if move.captured_piece == nothing && only_captures
-                continue
-            end
 
+        if move.captured_piece == nothing && only_captures
+            continue
+        end
+
+        if is_legal_move(gs, move, self_occupancy_bb, adv_attacked_noking_bb, pieces_attacking_king_bb, pieces_pinning_bb)
             @yield move
         end
     end

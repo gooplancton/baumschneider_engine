@@ -95,7 +95,7 @@ function eval_piece_squares(move::Move)::Int
     elseif move.is_left_castle
         val += (2*move.player_white - 1)*35
     elseif move.captured_piece !== nothing
-        val += piece_squares_tables[move.captured_piece][move.to_square + 1]
+        val -= piece_squares_tables[move.captured_piece][move.to_square + 1]
     end
 
     if move.promotion_piece !== nothing

@@ -393,7 +393,7 @@ function undo_move!(gs::GameState, move::Move)
         end
     end
 
-    revert_castling_rights!(gs)
+    revert_castling_rights!(gs, move)
 
     if move.is_right_castle && move.player_white
         gs.white_rooks = clear_bit(gs.white_rooks, 63)
